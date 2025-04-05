@@ -1,4 +1,3 @@
-// src/candidatos/candidatos.controller.ts
 import { Body, Controller, Get, Post } from '@nestjs/common';
 import { CandidatosService } from './candidatos.service';
 import { CreateCandidatoDto } from './dto/create-candidato.dto';
