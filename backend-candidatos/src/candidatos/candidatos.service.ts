@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common'
+import { Injectable, NotFoundException } from '@nestjs/common'
 import { poolPromise } from '../database.provider'
 import { CreateCandidatoDto } from './dto/create-candidato.dto'
 
@@ -9,13 +9,11 @@ export class CandidatosService {
 
     const { nome, cpf, email, telefone, endereco, qualificacoes, curriculo } = createCandidatoDto
 
-    // Checa se já existe pelo CPF
     const check = await pool.request()
       .input('cpf', cpf)
       .query('SELECT * FROM candidatos WHERE cpf = @cpf')
 
     if (check.recordset.length > 0) {
-      // Atualiza se já existe
       await pool.request()
         .input('nome', nome)
         .input('cpf', cpf)
@@ -37,7 +35,6 @@ export class CandidatosService {
 
       return { message: 'Candidato atualizado com sucesso!' }
     } else {
-      // Insere se não existe
       await pool.request()
         .input('nome', nome)
         .input('cpf', cpf)
@@ -59,5 +56,39 @@ export class CandidatosService {
     const pool = await poolPromise
     const result = await pool.request().query('SELECT * FROM candidatos')
     return result.recordset
+  }
+
+  async updateByCpf(cpf: string, data: CreateCandidatoDto) {
+    const pool = await poolPromise
+
+    // Verifica se o CPF existe
+    const check = await pool.request()
+      .input('cpf', cpf)
+      .query('SELECT * FROM candidatos WHERE cpf = @cpf')
+
+    if (check.recordset.length === 0) {
+      throw new NotFoundException('Candidato não encontrado')
+    }
+
+    await pool.request()
+      .input('nome', data.nome)
+      .input('cpf', cpf)
+      .input('email', data.email)
+      .input('telefone', data.telefone)
+      .input('endereco', data.endereco)
+      .input('qualificacoes', data.qualificacoes)
+      .input('curriculo', data.curriculo || null)
+      .query(`
+        UPDATE candidatos SET
+          nome = @nome,
+          email = @email,
+          telefone = @telefone,
+          endereco = @endereco,
+          qualificacoes = @qualificacoes,
+          curriculo = ISNULL(@curriculo, curriculo)
+        WHERE cpf = @cpf
+      `)
+
+    return { message: 'Candidato atualizado com sucesso!' }
   }
 }
